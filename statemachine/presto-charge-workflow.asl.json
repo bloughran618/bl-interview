@@ -1,0 +1,60 @@
+{
+    "Comment": "A state machine that charges cars",
+    "StartAt": "StartCharge",
+    "States": {
+        "StartCharge": {
+            "Type": "Task",
+            "Resource": "${StartChargeArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "Catch": [ {
+                   "ErrorEquals": [ "States.ALL" ],
+                   "Next": "ChargeFailed"
+                } ],
+            "Next": "PollCharge"
+        },
+        "PollCharge": {
+            "Type": "Task",
+            "Resource": "${PollChargeArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "DidPollChargeSucceed"
+        },
+        "DidPollChargeSucceed": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.data.status",
+                    "StringEquals": "IN_PROGRESS",
+                    "Next": "PollCharge"
+                }
+            ],
+            "Default": "PollChargeDidSucceed"
+        },
+        "PollChargeDidSucceed": {
+            "Type": "Pass",
+            "End": true
+        },
+        "ChargeFailed": {
+            "Type": "Fail",
+            "Cause": "Charge response failed.",
+            "Error": "ChargeFailure"
+        }
+    }
+}
